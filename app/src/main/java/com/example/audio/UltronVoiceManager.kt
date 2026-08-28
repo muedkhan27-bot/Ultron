@@ -222,12 +222,18 @@ class UltronVoiceManager(
         return quote
     }
 
+    private var consecutiveErrors = 0
+
     private fun initSpeechRecognizer() {
-        if (SpeechRecognizer.isRecognitionAvailable(context)) {
-            speechRecognizer?.destroy()
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-                setRecognitionListener(createRecognitionListener())
-            }
+        mainHandler.post {
+            try {
+                if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                    speechRecognizer?.destroy()
+                    speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext).apply {
+                        setRecognitionListener(createRecognitionListener())
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -235,6 +241,7 @@ class UltronVoiceManager(
         return object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
                 _isListening.value = true
+                consecutiveErrors = 0
                 recordedRmsWindow.clear()
             }
 
@@ -260,6 +267,13 @@ class UltronVoiceManager(
             override fun onError(error: Int) {
                 _isListening.value = false
                 _audioRms.value = 0f
+                consecutiveErrors++
+
+                // If recognizer got corrupted or had too many errors, recreate it
+                if (consecutiveErrors >= 3 || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT) {
+                    initSpeechRecognizer()
+                    consecutiveErrors = 0
+                }
 
                 // In continuous auto-conversation or wake word mode, seamlessly restart
                 if (_isAutoConversationMode.value && !_isSpeaking.value) {
@@ -267,7 +281,7 @@ class UltronVoiceManager(
                         if (_isAutoConversationMode.value && !_isSpeaking.value) {
                             startRecognizerIntent()
                         }
-                    }, 600)
+                    }, 500)
                 } else if (isContinuousWakeListening && !isCommandListening) {
                     restartWakeWordListening()
                 }
@@ -276,6 +290,7 @@ class UltronVoiceManager(
             override fun onResults(results: Bundle?) {
                 _isListening.value = false
                 _audioRms.value = 0f
+                consecutiveErrors = 0
 
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val spokenText = matches?.firstOrNull()?.trim() ?: ""
@@ -305,7 +320,12 @@ class UltronVoiceManager(
                     } else if (isContinuousWakeListening) {
                         if (containsWakeWord(spokenText)) {
                             if (verification.isMatch) {
-                                onWakeWordDetected(true, verification.confidencePercent)
+                                val cleanCommand = extractCommandAfterWakeWord(spokenText)
+                                if (cleanCommand.isNotBlank()) {
+                                    onCommandRecognized(cleanCommand, true, verification.confidencePercent)
+                                } else {
+                                    onWakeWordDetected(true, verification.confidencePercent)
+                                }
                             } else {
                                 onVoiceUnauthorized(verification.confidencePercent)
                                 restartWakeWordListening()
@@ -336,7 +356,12 @@ class UltronVoiceManager(
                         speechRecognizer?.stopListening()
                         val verification = biometricsManager.verifySpeaker(recordedRmsWindow, currentPitchEstimate)
                         if (verification.isMatch) {
-                            onWakeWordDetected(true, verification.confidencePercent)
+                            val cleanCommand = extractCommandAfterWakeWord(partial)
+                            if (cleanCommand.isNotBlank()) {
+                                onCommandRecognized(cleanCommand, true, verification.confidencePercent)
+                            } else {
+                                onWakeWordDetected(true, verification.confidencePercent)
+                            }
                         } else {
                             onVoiceUnauthorized(verification.confidencePercent)
                         }
@@ -350,14 +375,33 @@ class UltronVoiceManager(
 
     fun containsWakeWord(text: String): Boolean {
         val lower = text.lowercase()
-        return lower.contains("ultron wake up") ||
-                lower.contains("wake up ultron") ||
-                lower.contains("hey ultron") ||
-                lower.contains("ok ultron") ||
-                lower.contains("ultron awaken") ||
-                lower.contains("wake up") ||
-                lower.contains("awaken") ||
-                lower.contains("walk up") // Speech recognizer phonetics tolerance for "wake up"
+            .replace("[^a-z0-9 ]".toRegex(), " ")
+            .trim()
+
+        val wakeKeywords = listOf(
+            "ultron", "hey ultron", "hi ultron", "hello ultron", "ok ultron", "okay ultron",
+            "wake up", "wake up ultron", "ultron wake up", "wake ultron", "awaken ultron",
+            "ultron awaken", "awaken", "ultra", "hey ultra", "ultra wake up", "wake up ultra",
+            "altron", "all tron", "alltron", "el tron", "oltron", "old run", "outron",
+            "walk up", "wake"
+        )
+        return wakeKeywords.any { lower.contains(it) }
+    }
+
+    fun extractCommandAfterWakeWord(text: String): String {
+        var lower = text.lowercase()
+        val wakePrefixes = listOf(
+            "ultron wake up and", "ultron wake up", "wake up ultron and", "wake up ultron",
+            "hey ultron", "hi ultron", "hello ultron", "ok ultron", "okay ultron",
+            "ultron please", "ultron can you", "ultron", "ultra", "altron"
+        )
+        for (prefix in wakePrefixes) {
+            if (lower.startsWith(prefix)) {
+                val command = text.substring(prefix.length).trim().removePrefix(",").trim()
+                if (command.isNotBlank()) return command
+            }
+        }
+        return ""
     }
 
     /**

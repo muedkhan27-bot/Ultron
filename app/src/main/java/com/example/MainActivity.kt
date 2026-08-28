@@ -27,12 +27,17 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val audioGranted = permissions[Manifest.permission.RECORD_AUDIO] == true
         if (audioGranted && viewModel.telemetry.value.isWakeWordActive) {
+            UltronWakeService.startService(this)
             viewModel.voiceManager.startWakeWordListening()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
         enableEdgeToEdge()
 
         requestRequiredPermissions()
@@ -88,6 +93,7 @@ class MainActivity : ComponentActivity() {
         if (viewModel.telemetry.value.isWakeWordActive &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         ) {
+            UltronWakeService.startService(this)
             viewModel.voiceManager.startWakeWordListening()
         }
     }
