@@ -1,0 +1,7 @@
+{
+  "name": "Ultron AI",
+  "description": "Holographic Ultron voice assistant with online intelligence, offline database, wake word detection, and deep phone controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

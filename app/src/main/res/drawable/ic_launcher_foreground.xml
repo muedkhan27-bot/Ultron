@@ -1,0 +1,51 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.9"
+        android:scaleY="0.9">
+        <!-- Outer Glowing Target Arcs -->
+        <path
+            android:pathData="M54,20 A34,34 0 0,1 88,54"
+            android:strokeWidth="2.5"
+            android:strokeColor="#FF2A4D"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M54,88 A34,34 0 0,1 20,54"
+            android:strokeWidth="2.5"
+            android:strokeColor="#FF2A4D"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M30,30 L38,38 M78,30 L70,38 M30,78 L38,70 M78,78 L70,70"
+            android:strokeWidth="1.8"
+            android:strokeColor="#FF6B8B" />
+        <!-- Inner HUD Hexagon & Reactor Ring -->
+        <path
+            android:pathData="M54,32 L73,43 L73,65 L54,76 L35,65 L35,43 Z"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FF1744"
+            android:fillColor="#15FF1744" />
+        <!-- Ultron Brow & Jaw Silhouette -->
+        <path
+            android:pathData="M40,42 L54,36 L68,42 L64,52 L54,49 L44,52 Z"
+            android:fillColor="#FF2A4D" />
+        <path
+            android:pathData="M44,58 L54,62 L64,58 L60,68 L54,72 L48,68 Z"
+            android:fillColor="#D50000" />
+        <!-- Glowing Core Crimson Eyes -->
+        <path
+            android:pathData="M44,48 L50,47 L46,52 Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M64,48 L58,47 L62,52 Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M54,53 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0"
+            android:fillColor="#FF5252" />
+    </group>
+</vector>
+
