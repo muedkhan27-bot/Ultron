@@ -232,6 +232,7 @@ private fun MessageItem(
                         // Source Badge (Gemini vs Room DB)
                         if (!isUser && !isSystem) {
                             val (sourceLabel, sourceColor) = when (message.source) {
+                                ResponseSource.ONLINE_OPENROUTER -> Pair("OPENROUTER", Color(0xFFFF9100))
                                 ResponseSource.ONLINE_GEMINI -> Pair("GEMINI", HudGreen)
                                 ResponseSource.OFFLINE_DATABASE -> Pair("OFFLINE DB", HudWarning)
                                 ResponseSource.SYSTEM_ACTION -> Pair("ACTION", Color(0xFF00E5FF))

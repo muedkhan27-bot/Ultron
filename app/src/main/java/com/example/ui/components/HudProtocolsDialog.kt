@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -36,6 +37,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -63,6 +66,7 @@ import com.example.BuildConfig
 import com.example.audio.UltronVoiceProfile
 import com.example.model.HudTheme
 import com.example.model.SystemTelemetry
+import com.example.network.OpenRouterClient
 import com.example.ui.theme.FrostedGlassBg
 import com.example.ui.theme.FrostedGlassBgHover
 import com.example.ui.theme.FrostedGlassBorder
@@ -603,50 +607,149 @@ fun HudProtocolsDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Section 5: Online Intelligence / Gemini Key Status
-                SettingSectionHeader("GEMINI AI CORE INTEGRATION", Icons.Default.Key, themeColor)
+                // Section 5: OpenRouter Free AI Core + Gemini Fallback
+                SettingSectionHeader("AI CONSCIOUSNESS // OPENROUTER & GEMINI", Icons.Default.Hub, themeColor)
                 Spacer(modifier = Modifier.height(8.dp))
-                val isKeyConfigured = BuildConfig.GEMINI_API_KEY.isNotBlank() && BuildConfig.GEMINI_API_KEY != "MY_GEMINI_API_KEY"
 
+                var currentOpenRouterKey by remember { mutableStateOf(OpenRouterClient.getApiKey()) }
+                var selectedModel by remember { mutableStateOf(OpenRouterClient.getSelectedModel()) }
+                val isOpenRouterActive = currentOpenRouterKey.isNotBlank() && currentOpenRouterKey != "MY_OPENROUTER_API_KEY"
+
+                // OpenRouter Status Badge
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (isKeyConfigured) HudGreen.copy(alpha = 0.12f) else HudWarning.copy(alpha = 0.12f))
-                        .border(0.8.dp, if (isKeyConfigured) HudGreen.copy(alpha = 0.4f) else HudWarning.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .background(if (isOpenRouterActive) Color(0xFFFF9100).copy(alpha = 0.12f) else FrostedGlassBg)
+                        .border(0.8.dp, if (isOpenRouterActive) Color(0xFFFF9100).copy(alpha = 0.4f) else FrostedGlassBorder, RoundedCornerShape(8.dp))
                         .padding(10.dp)
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isKeyConfigured) Icons.Default.Security else Icons.Default.Key,
+                                imageVector = if (isOpenRouterActive) Icons.Default.Security else Icons.Default.Key,
                                 contentDescription = null,
-                                tint = if (isKeyConfigured) HudGreen else HudWarning,
+                                tint = if (isOpenRouterActive) Color(0xFFFF9100) else FrostedTextSecondary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isKeyConfigured) "GEMINI 3.5 FLASH // ONLINE" else "GEMINI API KEY // PREPARED",
+                                text = if (isOpenRouterActive) "OPENROUTER // ACTIVE" else "OPENROUTER // READY",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isKeyConfigured) HudGreen else HudWarning
+                                    color = if (isOpenRouterActive) Color(0xFFFF9100) else FrostedTextSecondary
                                 )
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isKeyConfigured)
-                                "Gemini API Key active from Secrets panel. Full global online intelligence enabled."
-                            else
-                                "Online model configured for gemini-3.5-flash. When offline or without key, Ultron operates autonomously via local Quantum Room Knowledge Base.",
+                            text = "Auto-cascades through free models. Free keys can be configured via Secrets panel or entered below.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = FrostedTextPrimary.copy(alpha = 0.85f),
-                                lineHeight = 16.sp
+                                lineHeight = 15.sp,
+                                fontSize = 11.sp
                             )
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Free Model Quick Select
+                Text(
+                    text = "SELECT PRIMARY FREE AI MODEL:",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        color = FrostedTextSecondary,
+                        fontSize = 9.5.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OpenRouterClient.FREE_MODELS.forEach { modelName ->
+                        val isSelected = selectedModel == modelName
+                        val displayName = modelName.substringAfter("/").removeSuffix(":free")
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) themeColor.copy(alpha = 0.2f) else FrostedGlassBg)
+                                .border(
+                                    if (isSelected) 1.dp else 0.5.dp,
+                                    if (isSelected) themeColor else FrostedGlassBorder,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable {
+                                    selectedModel = modelName
+                                    OpenRouterClient.setSelectedModel(modelName)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = displayName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) themeColor else FrostedTextPrimary,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(HudGreen.copy(alpha = 0.15f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "100% FREE",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 8.sp,
+                                            color = HudGreen
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Custom API Key Input
+                OutlinedTextField(
+                    value = currentOpenRouterKey,
+                    onValueChange = {
+                        currentOpenRouterKey = it
+                        OpenRouterClient.saveApiKey(it)
+                    },
+                    label = {
+                        Text("OpenRouter API Key (sk-or-v1-...)", fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                    },
+                    placeholder = {
+                        Text("sk-or-v1-...", color = FrostedTextMuted, fontSize = 11.sp)
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = themeColor,
+                        unfocusedBorderColor = FrostedGlassBorder,
+                        focusedLabelColor = themeColor,
+                        unfocusedLabelColor = FrostedTextSecondary,
+                        focusedTextColor = FrostedTextPrimary,
+                        unfocusedTextColor = FrostedTextPrimary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("openrouter_key_input")
+                )
             }
         }
     }

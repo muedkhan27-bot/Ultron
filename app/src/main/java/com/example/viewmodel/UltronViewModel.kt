@@ -23,6 +23,8 @@ import com.example.model.UltronMessage
 import com.example.network.GeminiClient
 import com.example.network.GeminiContent
 import com.example.network.GeminiPart
+import com.example.network.OpenRouterClient
+import com.example.network.OpenRouterMessage
 import com.example.service.UltronWakeService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -86,6 +88,7 @@ class UltronViewModel(application: Application) : AndroidViewModel(application) 
     val isAutoConversationMode: StateFlow<Boolean> = voiceManager.isAutoConversationMode
 
     private val conversationHistory = mutableListOf<GeminiContent>()
+    private val openRouterHistory = mutableListOf<OpenRouterMessage>()
 
     init {
         postInitialGreeting()
@@ -384,11 +387,33 @@ class UltronViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            // 4. Online Mode -> Query Gemini 3.5 Flash API
+            // 4. Online Mode -> Query OpenRouter AI first, fallback to Gemini, then offline DB
+            val openRouterResult = OpenRouterClient.askUltron(cleaned, openRouterHistory)
+            if (openRouterResult.isSuccess) {
+                val text = openRouterResult.getOrThrow()
+                openRouterHistory.add(OpenRouterMessage(role = "user", content = cleaned))
+                openRouterHistory.add(OpenRouterMessage(role = "assistant", content = text))
+                if (openRouterHistory.size > 12) {
+                    openRouterHistory.removeAt(0)
+                    openRouterHistory.removeAt(0)
+                }
+
+                UltronSoundSynth.playActionSound()
+                val reply = UltronMessage(
+                    text = text,
+                    sender = SenderType.ULTRON,
+                    source = ResponseSource.ONLINE_OPENROUTER,
+                    actionExecuted = "[OPENROUTER_AI]"
+                )
+                addMessage(reply)
+                voiceManager.speak(text)
+                return@launch
+            }
+
+            // Fallback to Gemini if OpenRouter is unconfigured or returns an error
             val geminiResult = GeminiClient.askUltron(cleaned, conversationHistory)
             if (geminiResult.isSuccess) {
                 val text = geminiResult.getOrThrow()
-                // Update history
                 conversationHistory.add(GeminiContent(role = "user", parts = listOf(GeminiPart(text = cleaned))))
                 conversationHistory.add(GeminiContent(role = "model", parts = listOf(GeminiPart(text = text))))
                 if (conversationHistory.size > 10) {
@@ -401,12 +426,12 @@ class UltronViewModel(application: Application) : AndroidViewModel(application) 
                     text = text,
                     sender = SenderType.ULTRON,
                     source = ResponseSource.ONLINE_GEMINI,
-                    actionExecuted = "[GEMINI_3.5_FLASH]"
+                    actionExecuted = "[GEMINI_AI]"
                 )
                 addMessage(reply)
                 voiceManager.speak(text)
             } else {
-                // Network / Gemini failure fallback to Room Offline Knowledge
+                // Network / AI failure fallback to Room Offline Knowledge
                 val offlineKnowledge = repository.searchOfflineKnowledge(cleaned)
                 if (offlineKnowledge != null) {
                     UltronSoundSynth.playActionSound()
@@ -414,7 +439,7 @@ class UltronViewModel(application: Application) : AndroidViewModel(application) 
                         text = offlineKnowledge.answer,
                         sender = SenderType.ULTRON,
                         source = ResponseSource.OFFLINE_DATABASE,
-                        actionExecuted = "[OFFLINE_DB_FALLBACK]"
+                        actionExecuted = "[OFFLINE_DB: ${offlineKnowledge.category}]"
                     )
                     addMessage(reply)
                     voiceManager.speak(offlineKnowledge.answer)

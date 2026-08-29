@@ -3,6 +3,7 @@ package com.example
 import android.app.Application
 import com.example.data.KnowledgeRepository
 import com.example.data.UltronDatabase
+import com.example.network.OpenRouterClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,6 +18,7 @@ class UltronApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        OpenRouterClient.init(this)
         database = UltronDatabase.getDatabase(this)
         repository = KnowledgeRepository(database.knowledgeDao())
 

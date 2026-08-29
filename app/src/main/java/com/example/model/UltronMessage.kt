@@ -7,6 +7,7 @@ enum class SenderType {
 }
 
 enum class ResponseSource {
+    ONLINE_OPENROUTER,
     ONLINE_GEMINI,
     OFFLINE_DATABASE,
     SYSTEM_ACTION,
